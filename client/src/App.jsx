@@ -12,7 +12,7 @@ import PlacesFormPage from "./pages/PlacesFormPage";
 import PlacePage from "./pages/PlacePage";
 import BookingsPage from "./pages/BookingsPage";
 import BookingPage from "./pages/BookingPage";
-
+import PlacesProvider from './PlacesContext';
 axios.defaults.baseURL = 'http://localhost:4000';
 //axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL;
 axios.defaults.withCredentials = true;
@@ -20,6 +20,8 @@ axios.defaults.withCredentials = true;
 function App() {
   return (
     <UserContextProvider>
+              <PlacesProvider>
+
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<IndexPage />} />
@@ -33,7 +35,10 @@ function App() {
           <Route path="/account/bookings" element={<BookingsPage />} />
           <Route path="/account/bookings/:id" element={<BookingPage />} />
         </Route>
+        
       </Routes>
+      </PlacesProvider>
+
     </UserContextProvider>
   )
 }

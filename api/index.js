@@ -226,10 +226,19 @@ app.put('/places', async (req,res) => {
   });
 });
 
-app.get('/places', async (req,res) => {
-
-  res.json( await Place.find() );
+app.get("/places", async (req, res) => {
+  const searchQuery = req.query.search || "";
+  const searchRegex = new RegExp(searchQuery, "i");
+  res.json(
+    await Place.find({
+      $or: [
+        { address: { $regex: searchRegex } },
+        { title: { $regex:searchRegex } },
+      ],
+    })
+  );
 });
+
 
 app.post('/bookings', async (req, res) => {
 

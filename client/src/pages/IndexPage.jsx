@@ -1,15 +1,22 @@
-import {useEffect, useState} from "react";
+import {useEffect, useState, useContext} from "react";
 import axios from "axios";
 import {Link} from "react-router-dom";
 import Image from "../Image.jsx";
-
+import { PlacesContext } from "../PlacesContext.jsx";
 export default function IndexPage() {
-  const [places,setPlaces] = useState([]);
+  const { places } = useContext(PlacesContext);
+
   useEffect(() => {
-    axios.get('/places').then(response => {
+    const fetchPlaces = async () => {
+      const response = await axios.get("/places", {
+        params: { search: "" },
+      });
       setPlaces(response.data);
-    });
+    };
+
+    fetchPlaces();
   }, []);
+
   return (
     <div className="mt-8 grid gap-x-6 gap-y-8 grid-cols-2 md:grid-cols-3 lg:grid-cols-3">
       {places.length > 0 && places.map(place => (
