@@ -16,9 +16,11 @@ export default function BookingWidget({place}) {
   const [phone,setPhone] = useState('');
   const [redirect,setRedirect] = useState('');
   const {user} = useContext(UserContext);
-  const navigate = useNavigate();;
+  const navigate = useNavigate();
+  const [isBookingDisabled, setIsBookingDisabled] = useState(false);
   
   useEffect(() => {
+
     if (user) {
       setName(user.name);
     }
@@ -30,9 +32,12 @@ export default function BookingWidget({place}) {
   }
 
   function isFormValid() {
-    return checkIn && checkOut && name && phone;
+    return checkIn && checkOut && checkOut > checkIn && name && phone;
   }
 
+  const notLoggedIn = () => {
+    navigate('/login');
+  };
 
   async function bookThisPlace(onSuccess) {   
 
@@ -42,18 +47,17 @@ export default function BookingWidget({place}) {
       return;
     }
 
-    const notLoggedIn = () => {
-      navigate('/login');
-    };
-    
+
+
     if (!isFormValid() && user) {
       alert("Please fill in all the required fields.");
       return;
     }
 
+    setIsBookingDisabled(true);
+
     const stripe = await stripePromise;
-  
-    // First, create the payment intent
+
     const { data } = await axios.post("/create-payment-intent", {
       amount: numberOfNights * place.price * 100,
       checkIn,
@@ -68,18 +72,10 @@ export default function BookingWidget({place}) {
     const result = await stripe.redirectToCheckout({ sessionId: data.sessionId });
   
     if (result.error) {
-      // Handle any errors that occurred during the redirect
       console.error(result.error.message);
-    } else {
-      onSuccess(result.url);
+      setIsBookingDisabled(false);
     }
   }
-
-const onSuccess = (url) => {
-  const urlParams = new URLSearchParams(new URL(url).search);
-  const checkoutSessionId = urlParams.get("session_id");
-  navigate.push(`/success?session_id=${checkoutSessionId}`);
-};
 
 
 

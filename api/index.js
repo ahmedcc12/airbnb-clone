@@ -243,7 +243,6 @@ app.get("/places", async (req, res) => {
 
   const minPrice = req.query.minPrice ? parseInt(req.query.minPrice) : 0;
   const maxPrice = req.query.maxPrice ? parseInt(req.query.maxPrice) : Infinity;
-
   try {
     const places = await Place.find({
       $or: [
@@ -297,6 +296,7 @@ app.get("/places", async (req, res) => {
   });
   
   app.post('/success', async (req, res) => {
+    console.log('Success route called');
     const { sessionId } = req.body;
     const session = await stripe.checkout.sessions.retrieve(sessionId);
     const paymentIntentId = session.payment_intent;

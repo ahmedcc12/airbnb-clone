@@ -99,9 +99,8 @@ export default function PlacesFormPage() {
         </div>
         {preInput('Extra info','house rules, etc')}
         <textarea value={extraInfo} onChange={ev => setExtraInfo(ev.target.value)} />
-        preInput('Check in&out times','add check in and out times, remember to have some time window for cleaning the room between guests')
-        <div className="grid gap-2 grid-cols-1 md:grid-cols-2">
-          <div>
+        <div className="grid gap-2 grid-cols-2 md:grid-cols-4">
+        <div>
             <h3 className="mt-2 -mb-1">Check in time</h3>
             <input type="text"
                    value={checkIn}
@@ -114,46 +113,17 @@ export default function PlacesFormPage() {
                    value={checkOut}
                    onChange={ev => setCheckOut(ev.target.value)}
                    placeholder="11" />
-  </div>
-
-  <div>
-            <h3 className="mt-2 -mb-1">Max no. of guests</h3>
-            <input
-              type="text"
-              value={maxGuests}
-              onChange={(e) => setMaxGuests(e.target.value)}
-              placeholder="1"
-            />
+          </div>
+          <div>
+            <h3 className="mt-2 -mb-1">Max number of guests</h3>
+            <input type="number" value={maxGuests}
+                   onChange={ev => setMaxGuests(ev.target.value)}/>
           </div>
           <div>
             <h3 className="mt-2 -mb-1">Price per night</h3>
-            <input
-              type="text"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              placeholder="1"
-            />
+            <input type="number" value={price}
+                   onChange={ev => setPrice(ev.target.value)}/>
           </div>
-
-  {/*  <div className="w-full">
-    <h3 className="mt-2 -mb-1">Max number of guests</h3>
-    <input
-      type="number"
-      value={maxGuests}
-      onChange={ev => setMaxGuests(ev.target.value)}
-      style={{ width: '100%' }}
-    />
-  </div>
-  <div className="w-full">
-    <h3 className="mt-2 -mb-1">Price per night</h3>
-    <input
-      type="number"
-      value={price}
-      onChange={ev => setPrice(ev.target.value)}
-      style={{ width: '100%' }}
-    />
-    </div>*/}
-
         </div>
         <button className="primary my-4">Save</button>
       </form>
