@@ -11,7 +11,7 @@ export default function IndexPage() {
       const response = await axios.get("/places", {
         params: { search: "" },
       });
-      setPlaces(response.data);
+     // setPlaces(response.data);
     };
 
     fetchPlaces();

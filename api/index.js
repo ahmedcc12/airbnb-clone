@@ -16,7 +16,8 @@ const firebase = require('firebase/compat/app');
 require('firebase/compat/storage');
 const multer = require('multer');
 const fs = require('fs');
-
+const stripe=require('stripe')(process.env.STRIPE_SECRET_KEY);
+const axios = require('axios');
 // connect with database
 connectWithDB();
 
@@ -100,6 +101,8 @@ app.post('/login', async (req,res) => {
 
   const {email,password} = req.body;
   const userDoc = await User.findOne({email});
+  const isProduction = !!process.env.MONGO_URL;
+
   if (userDoc) {
     const passOk = bcrypt.compareSync(password, userDoc.password);
     if (passOk) {
@@ -113,41 +116,49 @@ app.post('/login', async (req,res) => {
           if (err) {
             console.log('invalid token');
           } else {
-            console.log('valid login token',token);
+            console.log('valid login token');
           }
         }); 
         //set token in cookie
         res.cookie('token', token, {
           httpOnly: true,
-          sameSite: 'none',
-          secure: true,
+          sameSite: isProduction ? 'none' : 'lax',
+          secure: isProduction,
         }).json('ok');
       });
     } else {
       res.status(422).json('pass not ok');
-    }
+    } 
   } else {
     res.json('not found');
   }
 });
 
-app.get('/profile', (req,res) => {
+app.get('/profile', async (req, res) => {
+  const { token } = req.cookies;
 
-  const {token} = req.cookies;
   if (token) {
-    jwt.verify(token, jwtSecret, {}, async (err, userData) => {
-      if (err) throw err;
-      const {name,email,_id} = await User.findById(userData.id);
-      res.json({name,email,_id});
-    });
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const user = await User.findById(decoded.id);
+      res.json(user);
+    } catch (error) {
+      console.error(error);
+      res.json(null);
+    }
   } else {
     res.json(null);
   }
+}) 
+
+app.post('/logout', (req, res) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    sameSite: 'none',
+    secure: true,
+  }).json('Logged out successfully');
 });
 
-app.post('/logout', (req,res) => {
-  res.cookie('token', '').json(true);
-});
 
 
 app.post('/upload-by-link', async (req,res) => {
@@ -239,28 +250,80 @@ app.get("/places", async (req, res) => {
   );
 });
 
-
-app.post('/bookings', async (req, res) => {
-
-  const userData = await getUserDataFromReq(req);
-  const {
-    place,checkIn,checkOut,numberOfGuests,name,phone,price,
-  } = req.body;
-  Booking.create({
-    place,checkIn,checkOut,numberOfGuests,name,phone,price,
-    user:userData.id,
-  }).then((doc) => {
-    res.json(doc);
-  }).catch((err) => {
-    throw err;
-  });
-});
   
+  app.post('/create-payment-intent', async (req, res) => {
+    const userData = await getUserDataFromReq(req);
+    const { amount, checkIn, checkOut, numberOfGuests, name, phone, placeId } = req.body;
+  
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: 'Booking',
+            },
+            unit_amount: amount,
+          },
+          quantity: 1,
+        },
+      ],
+      mode: 'payment',
+      metadata: {
+        userId: userData.id,
+        checkIn,
+        checkOut,
+        numberOfGuests,
+        name,
+        phone,
+        placeId,
+        amount,
+      },
+      success_url: 'http://127.0.0.1:5173/success?session_id={CHECKOUT_SESSION_ID}',
+      cancel_url: 'http://127.0.0.1:5173/cancel',
+    });
+  
+    res.json({ sessionId: session.id, userId: userData.id }); 
+  });
+  
+  app.post('/success', async (req, res) => {
+    const { sessionId } = req.body;
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    const paymentIntentId = session.payment_intent;
+    const userId = session.metadata.userId;
+  
+    const { checkIn, checkOut, numberOfGuests, name, phone, placeId, amount } = session.metadata;
+  
+    const booking = new Booking({
+      place: placeId,
+      checkIn,
+      checkOut,
+      numberOfGuests,
+      name,
+      phone,
+      price: amount / 100,
+      paymentIntentId,
+      user: userId,
+    });
+  
+    try {
+      const savedBooking = await booking.save();
+      res.json({ bookingId: savedBooking._id });
+    } catch (error) {
+      console.error('Booking creation failed:', error);
+      res.status(400).send('Booking creation failed');
+    }
+  });
+  
+
 
 app.get('/bookings', async (req,res) => {
 
   const userData = await getUserDataFromReq(req);
   res.json( await Booking.find({user:userData.id}).populate('place') );
 });
+
+
 
 app.listen(4000);

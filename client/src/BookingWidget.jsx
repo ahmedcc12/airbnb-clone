@@ -1,10 +1,14 @@
 import {useContext, useEffect, useState} from "react";
 import {differenceInCalendarDays} from "date-fns";
 import axios from "axios";
-import {Navigate} from "react-router-dom";
 import {UserContext} from "./UserContext.jsx";
+import {loadStripe} from "@stripe/stripe-js";
+import {useNavigate} from "react-router-dom";
 
 export default function BookingWidget({place}) {
+
+  const stripePromise = loadStripe('pk_test_bke7ZCU9G0pBoguB3PqRnx4I00qcCDDlkW');
+
   const [checkIn,setCheckIn] = useState('');
   const [checkOut,setCheckOut] = useState('');
   const [numberOfGuests,setNumberOfGuests] = useState(1);
@@ -12,7 +16,8 @@ export default function BookingWidget({place}) {
   const [phone,setPhone] = useState('');
   const [redirect,setRedirect] = useState('');
   const {user} = useContext(UserContext);
-
+  const navigate = useNavigate();;
+  
   useEffect(() => {
     if (user) {
       setName(user.name);
@@ -24,19 +29,59 @@ export default function BookingWidget({place}) {
     numberOfNights = differenceInCalendarDays(new Date(checkOut), new Date(checkIn));
   }
 
-  async function bookThisPlace() {
-    const response = await axios.post('/bookings', {
-      checkIn,checkOut,numberOfGuests,name,phone,
-      place:place._id,
-      price:numberOfNights * place.price,
-    });
-    const bookingId = response.data._id;
-    setRedirect(`/account/bookings/${bookingId}`);
+  function isFormValid() {
+    return checkIn && checkOut && name && phone;
   }
 
-  if (redirect) {
-    return <Navigate to={redirect} />
+
+  async function bookThisPlace(onSuccess) {   
+
+    if (!user) {
+      alert("Please log in.");
+      notLoggedIn();
+      return;
+    }
+
+    const notLoggedIn = () => {
+      navigate('/login');
+    };
+    
+    if (!isFormValid() && user) {
+      alert("Please fill in all the required fields.");
+      return;
+    }
+
+    const stripe = await stripePromise;
+  
+    // First, create the payment intent
+    const { data } = await axios.post("/create-payment-intent", {
+      amount: numberOfNights * place.price * 100,
+      checkIn,
+      checkOut,
+      numberOfGuests,
+      name,
+      phone,
+      placeId: place._id,
+    });
+    localStorage.setItem('paymentData', JSON.stringify({ checkIn, checkOut, numberOfGuests, name, phone, place, }));
+
+    const result = await stripe.redirectToCheckout({ sessionId: data.sessionId });
+  
+    if (result.error) {
+      // Handle any errors that occurred during the redirect
+      console.error(result.error.message);
+    } else {
+      onSuccess(result.url);
+    }
   }
+
+const onSuccess = (url) => {
+  const urlParams = new URLSearchParams(new URL(url).search);
+  const checkoutSessionId = urlParams.get("session_id");
+  navigate.push(`/success?session_id=${checkoutSessionId}`);
+};
+
+
 
   return (
     <div className="bg-white shadow p-4 rounded-2xl">

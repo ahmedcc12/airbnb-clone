@@ -9,6 +9,7 @@ const bookingSchema = new mongoose.Schema({
   phone: {type:String, required:true},
   price: Number,
   //add number of rooms (s+1,s+2...)
+  paymentIntentId: String,
 });
 
 const BookingModel = mongoose.model('Booking', bookingSchema);
