@@ -229,14 +229,23 @@ app.put('/places', async (req,res) => {
 app.get("/places", async (req, res) => {
   const searchQuery = req.query.search || "";
   const searchRegex = new RegExp(searchQuery, "i");
-  res.json(
-    await Place.find({
+
+  const minPrice = req.query.minPrice ? parseInt(req.query.minPrice) : 0;
+  const maxPrice = req.query.maxPrice ? parseInt(req.query.maxPrice) : Infinity;
+
+  try {
+    const places = await Place.find({
       $or: [
         { address: { $regex: searchRegex } },
-        { title: { $regex:searchRegex } },
+        { title: { $regex: searchRegex } },
       ],
-    })
-  );
+      price: { $gte: minPrice, $lte: maxPrice },
+    });
+
+    res.json(places);
+  } catch (error) {
+    res.status(500).json({ error: "An error occurred while fetching places" });
+  }
 });
 
 
